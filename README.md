@@ -1,4 +1,4 @@
-# PoC of CRM
+# PoC of CRM introduction
 
 Backend:  
 1.Libraries: spring boot,spring data jpa,H2,lombok,sping-test,swagger  
