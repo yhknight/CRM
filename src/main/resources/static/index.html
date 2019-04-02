@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CRM PoC</title>
+<!-- <link rel="stylesheet" href="https://unpkg.com/element-ui@2.7.0/lib/theme-chalk/index.css">
+<script src="https://unpkg.com/element-ui@2.7.0/lib/index.js"></script>
+<script src="https://unpkg.com/vue@2.6.10/dist/vue.js"></script>
+<script src="https://unpkg.com/axios@0.2.1/dist/axios.js"></script> -->
+
+<script src="https://cdn.jsdelivr.net/npm/vue"></script>
+<script src="https://unpkg.com/axios@0.2.1/dist/axios.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+ <style>
+ .el-table-new-row {
+    margin-top: 10px;
+    width: 100%;
+    height: 34px;
+    border: 1px dashed #c1c1cd;
+    border-radius: 3px;
+    cursor: pointer;
+    justify-content: center;
+    display: flex;
+    line-height: 34px;
+}
+</style>
+</head>
+<body>
+<div id="app">
+<el-form :model="customer" :rules="rules" ref="customer" label-width="100px">
+	<el-form-item label="Search:">
+		<el-col :span="12">
+		<el-input placeholder="customer name" v-model="name" prefix-icon="el-icon-search" @change="retrieveCus">
+		</el-input>
+		</el-col>
+	</el-form-item>
+	<el-form-item label="Customers:">
+		 <el-table border fit :data="customers" @row-click="rowSelection" max-height="410" highlight-current-row>
+	     <el-table-column type="index" width="50"></el-table-column>
+	     <el-table-column prop="name" label="Name" sortable></el-table-column>
+	     <el-table-column prop="status" label="Status" ></el-table-column>
+	     <el-table-column prop="address" label="Address" sortable></el-table-column>
+	     <el-table-column prop="createTime" label="CreateTime" sortable :formatter="getDate"></el-table-column>
+	     <el-table-column prop="createdBy" label="CreatedBy" sortable></el-table-column>
+	     <el-table-column prop="createTime" label="CreateTime" sortable :formatter="getDate"></el-table-column>
+	     <el-table-column prop="updateTime" label="UpdateTime" sortable :formatter="getDate"></el-table-column>
+	     <el-table-column  label="note">
+	      <template v-slot="scope">
+		      <el-popover placement="left" width="715" trigger="click" >
+				  <el-table :data="notes" border fit max-height="400" >
+				    <el-table-column width="200" property="note" label="Note">
+				    <template v-slot="scope">
+                            <span v-show="scope.row.isSet">
+                                <el-input size="small" type="text" maxlength="100" style="width:100%" placeholder="please input note" v-model="scope.row.note">
+                                </el-input>
+                            </span>
+                            <span v-show="!scope.row.isSet">{{scope.row.note}}</span>
+                        </template>
+				    </el-table-column>
+				    <el-table-column width="110" property="createdBy" label="CreatedBy" sortable></el-table-column>
+				    <el-table-column width="150" property="createTime" label="CreateTime" sortable :formatter="getDate"></el-table-column>
+				    <el-table-column width="150" property="updateTime" label="UpdateTime" sortable :formatter="getDate"></el-table-column>
+				    <el-table-column width="100" label="Operation">
+				    <template v-slot="scope">
+			          <el-button v-on:click="saveNote(scope.row)"  size="small" type="warning" plain>{{scope.row.isSet?'Save':'Edit'}}</el-button>
+			        </template>
+				    </el-table-column>
+				  </el-table>
+				  <el-button class="el-table-new-row" v-on:click="newNote" icon="el-icon-plus"></el-button>
+			 	 <el-button slot="reference" size="mini" type="success" round v-on:click.stop="retrieveNotes(scope.row.id)" plain>details</el-button>
+			   </el-popover>
+	      </template>
+         </el-table-column>
+	 	</el-table>
+	</el-form-item>
+	<el-form-item >
+	<el-tooltip class="item" effect="dark" content="Create new customer" placement="top-start">
+     	<el-button v-on:click="newCustomer" icon="el-icon-plus"></el-button>
+    </el-tooltip>
+	</el-form-item>
+	<el-form-item label="Name:" prop="name">
+		<el-col :span="12">
+		<el-input  v-model="customer.name" >
+		 </el-input>
+		 </el-col>
+	</el-form-item>
+	<el-form-item label="Address:" prop="address">
+	<el-col :span="12">
+		<el-input v-model="customer.address" >
+	    </el-input>
+	    </el-col>
+	</el-form-item>
+	<el-form-item label="Status:" prop="status">
+	  <el-select v-model=customer.status placeholder="Select">
+	    <el-option
+	      v-for="item in options"
+	      :key="item.value"
+	      :label="item.label"
+	      :value="item.value">
+	    </el-option>
+	  </el-select>
+	</el-form-item>
+	<el-form-item >
+		<el-button v-on:click="submitForm('customer')" ref="btnSave">{{btnLabel}}</el-button>
+	</el-form-item>
+</el-form>
+</div>
+</body>
+<script >
+Vue.prototype.$http = axios
+var vm = new Vue({
+    el: '#app',
+    data: {
+        customers: [],
+		notes:[],
+		note:{note:'',createdBy:'Tom',updatedBy:'Jacky'},
+        name: "",
+        customer:{id:0,name:'',status:'PROSPECTIVE',address:'',createdBy:'Jacky',updatedBy:'Tom'},
+        options: [{
+            value: 'PROSPECTIVE',
+            label: 'PROSPECTIVE'
+          }, {
+            value: 'CURRENT',
+            label: 'CURRENT'
+          }, {
+            value: 'NONACTIVE',
+            label: 'NONACTIVE'
+          }],
+          rules: {
+              name: [
+                { required: true, message: 'Please input customer name', trigger: 'blur' },
+                { min: 3, max: 15, message: 'Length should be 2 to 15', trigger: 'blur' }
+              ],
+              address: [
+                { required: true, message: 'Please input address', trigger: 'blur' },
+                { min: 3, max: 15, message: 'Length should be 3 to 15', trigger: 'blur' }
+              ]
+            },
+            btnLabel:'Create',
+            cusId:''
+    },
+    mounted: function () {
+        this.retrieveCus();
+    },
+    methods: {
+        rowSelection: function(row, column, event){
+        	console.log("row selected");
+        	this.customer.id = row.id;
+        	this.customer.name= row.name;
+        	this.customer.status= row.status;
+        	this.customer.address= row.address;
+        	this.customer.updatedBy= row.updatedBy;
+        	this.btnLabel="Update"
+        },
+        save: function(){
+        	if(this.customer.id > 0){
+        		this.updateCustomer();
+        	}else{
+        		this.postCustomer();
+        	}
+        	
+        	vm.$message({
+                type: 'success',
+                message: "save successfully!"
+            });
+        },
+    	retrieveCus: function () {
+            var search_params ={
+            	name:this.name		
+            };
+            var vm = this;
+            this.$http.get("/customer", {
+                params: search_params
+            }).then(function (response) {
+                console.log(response);
+                vm.customers = response;
+            }).catch(function (error) {
+            	 vm.$message({
+                     type: 'fail',
+                     message: error
+                 });
+            });
+        },
+        postCustomer: function (){
+        	var vm = this;
+        	this.$http.post('/customer',
+        			vm.customer
+        	   )
+        	  .then(function (response) {
+        	    console.log(response);
+        	    vm.customers.push(response);
+        	  })
+        	  .catch(function (error) {
+        		  vm.$message({
+                      type: 'fail',
+                      message: error
+                  });
+        	  });
+        	this.customer={id:0,name:'',status:'PROSPECTIVE',address:'',createdBy:'Jacky'};
+        },
+        updateCustomer: function (){
+        	var vm = this;
+        	this.$http.put('/customer/'+ vm.customer.id,
+        			vm.customer
+        	   )
+        	  .then(function (response) {
+        	    vm.retrieveCus();
+        	  })
+        	  .catch(function (error) {
+        		  vm.$message({
+                      type: 'fail',
+                      message: error
+                  });
+        	  });
+        },
+        _formatDate: function getNowFormatDate(time) {
+            var date = new Date(time);
+            var seperator1 = "-";
+            var seperator2 = ":";
+            var month = date.getMonth() + 1;
+            var strDate = date.getDate();
+            if (month >= 1 && month <= 9) {
+                month = "0" + month;
+            }
+            if (strDate >= 0 && strDate <= 9) {
+                strDate = "0" + strDate;
+            }
+            
+            var hour=date.getHours().toString();
+            var min=date.getMinutes().toString();
+            var sec=date.getSeconds().toString();
+            
+            var currentdate = date.getFullYear() + seperator1 + month + seperator1 + strDate
+                + " " + (hour.length==1?"0" + hour:hour) + seperator2 + (min.length==1?"0" + min:min)
+                + seperator2 + (sec.length==1?"0" + sec:sec);
+            return currentdate;
+        },
+        getDate: function (row, column) {
+        	var dateTime;
+        	if(column.property=="updateTime"){
+        		dateTime = row.updateTime;
+        	}
+        	
+        	if(column.property=="createTime") {
+        		dateTime = row.createTime;
+        	}
+        	
+            if (dateTime != null) {
+                return this._formatDate(dateTime);
+            } else {
+                return '';
+            }
+        },
+        newCustomer: function(){
+        	this.customer={id:0,name:'',status:'PROSPECTIVE',address:'',createdBy:'Jacky'};
+        	this.btnLabel="Create";
+        },
+        submitForm(formName) {
+            this.$refs[formName].validate((valid) => {
+              if (valid) {
+            	  this.save();
+              } else {
+                return false;
+              }
+            });
+          },
+          newNote:function(){
+        	  if(this.notes.length == 0 || this.notes.filter(function(item){
+    			  return item.id == 0;
+    		  }).length == 0 ){
+        		  this.notes.push({id:0,note:'',createdBy:'Tom',isSet:true});
+        	  }
+        	  
+          },
+          retrieveNotes:function(cusId){
+          	var vm = this;
+          	this.cusId=cusId;
+              this.$http.get('/customer/'+ cusId+'/note')
+              .then(function (response) {
+                  console.log(response);
+                  vm.notes = response;
+                  vm.notes.forEach(function(item){
+                	  item.isSet=false;
+                  });
+              }).catch(function (error) {
+              	 vm.$message({
+                       type: 'fail',
+                       message: error
+                   });
+              });
+          },
+          saveNote:function(row){
+        	  if(!row.isSet){
+        		  row.isSet=!row.isSet; 
+        		  //refresh model..
+        		  this.notes.push({});
+        		  this.notes.pop();
+        	  }else{
+        		  row.isSet=!row.isSet;
+            	  if(row.id>0){
+            		  this.updateNote(row);
+            	  }else{
+            		  this.postNote(row);
+            	  }
+            	  vm.$message({
+                      type: 'success',
+                      message: "save successfully!"
+                  });
+        	  } 
+        	  
+          },
+          postNote: function (row){
+          	var vm = this;
+          	this.note.note=row.note;
+          	this.note.createdBy='Tom';
+          	this.note.updatedBy='';
+          	this.$http.post('/customer/'+ vm.cusId+'/note',
+          			vm.note
+          	   )
+          	  .then(function (response) {
+          	    console.log(response);
+          	  	vm.notes.pop();
+          	    vm.notes.push(response);
+          	  })
+          	  .catch(function (error) {
+          		  vm.$message({
+                        type: 'fail',
+                        message: error
+                    });
+          	  });
+          },
+          updateNote: function (row){
+          	var vm = this;
+          	this.note.note=row.note;
+          	this.note.updatedBy='Jack';
+          	this.$http.put('/note/'+ row.id,
+          			vm.note
+          	   )
+          	  .then(function (response) {
+          	    vm.retrieveNotes(vm.cusId);
+          	  })
+          	  .catch(function (error) {
+          		  vm.$message({
+                        type: 'fail',
+                        message: error
+                    });
+          	  });
+          }
+    }
+});
+
+</script>
+</html>
