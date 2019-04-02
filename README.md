@@ -1,11 +1,12 @@
 # PoC of CRM introduction
 
 Backend:  
-1.Libraries: spring boot,spring data jpa,H2,lombok,sping-test,swagger  
-2.Code layers: repository,service,controller  
+1.Libraries: Spring Boot,Spring Data Jpa,H2,Lombok,Sping-Test,Mokito,Swagger  
+2.Code layers: repository,service,controller 
+3.UT:Junit,Mokito
 3.DB: H2(in memory DB)  
 4.Build tool:Maven  
-5.runtime container:embeded tomcat.  
+5.Runtime container:embeded tomcat.  
 
 Frontend:  
 1:libraries:vuejs,Element-ui,axios  
